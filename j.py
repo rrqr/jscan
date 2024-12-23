@@ -89,26 +89,20 @@ class Scanner:
 
 
 def main():
-    while True:
-        os.system("clear")
-        print(ga.green + """
-        Vulnerability Scanner v1.0
-        Created by NOVOHORY - NOVOSAD
-        Use responsibly. Unauthorized scanning is prohibited.
-        """ + ga.end)
+    os.system("clear")
+    print(ga.green + """
+    Vulnerability Scanner v1.0
+    Created by NOVOHORY - NOVOSAD
+    Use responsibly. Unauthorized scanning is prohibited.
+    """ + ga.end)
 
-        url = input(ga.yellow + "Enter the target URL (e.g., http://example.com/page.php?id=1): " + ga.end)
-        scanner = Scanner(url)
+    url = input(ga.yellow + "Enter the target URL (e.g., http://example.com/page.php?id=1): " + ga.end)
+    scanner = Scanner(url)
 
-        scanner.headers_reader()
-        scanner.rce_scan()
-        scanner.xss_scan()
-        scanner.sqli_scan()
-
-        cont = input(ga.yellow + "\nDo you want to scan another URL? (yes/no): " + ga.end).strip().lower()
-        if cont != 'yes':
-            print(ga.green + "Exiting..." + ga.end)
-            break
+    scanner.headers_reader()
+    scanner.rce_scan()
+    scanner.xss_scan()
+    scanner.sqli_scan()
 
 if __name__ == "__main__":
     main()
