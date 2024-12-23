@@ -65,7 +65,7 @@ class Scanner:
     def rce_scan(self):
         print(ga.bold + "\n[!] Scanning for Remote Code Execution (RCE)..." + ga.end)
         payloads = [';uname;', '&&dir', '&&type C:\\boot.ini', ';phpinfo();']
-        check = re.compile(r"Linux|eval\(|SERVER_ADDR|Volume.+Serial|\\[boot", re.I)
+        check = re.compile(r"Linux|eval\\(|SERVER_ADDR|Volume.+Serial|\\\\\\[boot", re.I)
         self.main_function(payloads, check)
 
     def xss_scan(self):
