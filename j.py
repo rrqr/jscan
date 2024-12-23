@@ -80,7 +80,9 @@ class Scanner:
     def sqli_scan(self):
         print(ga.bold + "\n[!] Scanning for SQL Injection..." + ga.end)
         payloads = [
-            "' OR '1'='1", "3'%20OR%201=1", "3"><script>alert(1)</script>"
+            "' OR '1'='1", 
+            "3'%20OR%201=1", 
+            "3\"><script>alert(1)</script>"
         ]
         check = re.compile(r"syntax|error|SQL|Fatal", re.I)
         self.main_function(payloads, check)
